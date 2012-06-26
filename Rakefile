@@ -10,7 +10,7 @@ EC2_KEY_NAME = 'us-west'
 EC2_REGION = 'us-west-1'
 
 CREDENTIALS = File.expand_path(File.join(File.dirname(__FILE__), '.aws'))
-AWS_KEY = File.expand_path(File.join(File.dirname(__FILE__), '.key'))
+AWS_SSH_KEY = File.expand_path(File.join(File.dirname(__FILE__), '.key'))
 
 task :default => :check_credentials
 
@@ -41,10 +41,10 @@ task :check_credentials do
     File.open(CREDENTIALS, 'w') { |out| YAML.dump credentials, out }
     File.chmod(0600, CREDENTIALS)
   end
-  unless File.exists? AWS_KEY
+  unless File.exists? AWS_SSH_KEY
     aws_key = ask('AWS SSH Key? ')
-    cp File.expand_path(aws_key), AWS_KEY
-    File.chmod(0600, AWS_KEY)
+    cp File.expand_path(aws_key), AWS_SSH_KEY
+    File.chmod(0600, AWS_SSH_KEY)
   end
 end
 
@@ -56,7 +56,7 @@ def write_connect_script(node, node_name)
   filename = connect_script_name node_name
   File.open(filename, 'w') do |out|
     out.puts "#!/bin/sh"
-    out.puts "ssh -i #{AWS_KEY} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no #{AMI_USER}@#{node.public_dns_name}"
+    out.puts "ssh -i #{AWS_SSH_KEY} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no #{AMI_USER}@#{node.public_dns_name}"
   end
   File.chmod(0755, filename)
   puts "Connect to #{node_name} using ./#{filename}"
