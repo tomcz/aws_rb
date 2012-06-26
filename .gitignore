@@ -3,3 +3,4 @@ ssh_*
 .idea
 *.swp
 .aws
+.key

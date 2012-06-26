@@ -3,16 +3,43 @@ require 'yaml'
 require 'highline/import'
 
 CREDENTIALS = File.expand_path(File.join(File.dirname(__FILE__), '.aws'))
+AWS_KEY = File.expand_path(File.join(File.dirname(__FILE__), '.key'))
 
 desc 'Create a named node'
 task :start, :node_name do |t, args|
   node = provision_node args.node_name
-  puts node.public_dns_name
+  wait_for_ssh_connection node
+  write_connect_script node, args.node_name
 end
 
 desc 'Terminate named node'
 task :stop, :node_name do |t, args|
   terminate_node args.node_name
+  filename = connect_script_name args.node_name
+  File.delete(filename) if File.exists?(filename)
+end
+
+def wait_for_ssh_connection(node)
+  sleep 5 while system("nc -z -v -w 10 #{node.public_dns_name} 22") == false
+end
+
+def write_connect_script(node, node_name)
+  unless File.exists? AWS_KEY
+    aws_key = ask('AWS SSH key? ')
+    cp File.expand_path(aws_key), AWS_KEY
+    File.chmod(0600, AWS_KEY)
+  end
+  filename = connect_script_name node_name
+  File.open(filename, 'w') do |out|
+    out.puts "#!/bin/sh"
+    out.puts "ssh -i #{AWS_KEY} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@#{node.public_dns_name}"
+  end
+  File.chmod(0755, filename)
+  puts "Connect to #{node_name} using ./#{filename}"
+end
+
+def connect_script_name(node_name)
+  "ssh_" + node_name
 end
 
 def provision_node(node_name)
