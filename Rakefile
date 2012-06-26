@@ -2,6 +2,13 @@ require 'aws'
 require 'yaml'
 require 'highline/import'
 
+AMI_USER = 'ec2-user'
+AMI_IMAGE = 'ami-6b73562e'
+AMI_SIZE = 'm1.small'
+
+EC2_KEY_NAME = 'us-west'
+EC2_REGION = 'us-west-1'
+
 CREDENTIALS = File.expand_path(File.join(File.dirname(__FILE__), '.aws'))
 AWS_KEY = File.expand_path(File.join(File.dirname(__FILE__), '.key'))
 
@@ -49,7 +56,7 @@ def write_connect_script(node, node_name)
   filename = connect_script_name node_name
   File.open(filename, 'w') do |out|
     out.puts "#!/bin/sh"
-    out.puts "ssh -i #{AWS_KEY} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@#{node.public_dns_name}"
+    out.puts "ssh -i #{AWS_KEY} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no #{AMI_USER}@#{node.public_dns_name}"
   end
   File.chmod(0755, filename)
   puts "Connect to #{node_name} using ./#{filename}"
@@ -65,9 +72,9 @@ def provision_node(node_name)
   unless instance
     puts "Starting #{node_name}"
     instance = conn.instances.create(
-        :image_id => 'ami-6b73562e',
-        :key_name => 'us-west',
-        :instance_type => 'm1.small'
+        :image_id => AMI_IMAGE,
+        :key_name => EC2_KEY_NAME,
+        :instance_type => AMI_SIZE
     )
     wait_while instance, :pending
     instance.add_tag('Name', :value => node_name)
@@ -105,5 +112,5 @@ end
 
 def connect_to_ec2
   ec2 = AWS::EC2.new(YAML.load_file(CREDENTIALS))
-  ec2.regions['us-west-1']
+  ec2.regions[EC2_REGION]
 end
