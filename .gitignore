@@ -1,0 +1,5 @@
+.DS_Store
+ssh_*
+.idea
+*.swp
+.aws
