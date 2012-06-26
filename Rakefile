@@ -19,6 +19,11 @@ task :stop, :node_name do |t, args|
   File.delete(filename) if File.exists?(filename)
 end
 
+desc 'Terminate all running nodes'
+task :stop_all do
+  terminate_all
+end
+
 def wait_for_ssh_connection(node)
   sleep 5 while system("nc -z -v -w 10 #{node.public_dns_name} 22") == false
 end
@@ -62,6 +67,16 @@ def terminate_node(node_name)
   connect_to_ec2.instances.each do |instance|
     if running_instance? instance, node_name
       puts "Terminating #{node_name}"
+      instance.terminate
+      wait_while instance, :running
+    end
+  end
+end
+
+def terminate_all
+  connect_to_ec2.instances.each do |instance|
+    if instance.status == :running
+      puts "Terminating #{instance.id}"
       instance.terminate
       wait_while instance, :running
     end
