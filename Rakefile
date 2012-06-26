@@ -5,23 +5,40 @@ require 'highline/import'
 CREDENTIALS = File.expand_path(File.join(File.dirname(__FILE__), '.aws'))
 AWS_KEY = File.expand_path(File.join(File.dirname(__FILE__), '.key'))
 
+task :default => :check_credentials
+
 desc 'Create a named node'
-task :start, :node_name do |t, args|
+task :start, [:node_name] => [:check_credentials] do |t, args|
   node = provision_node args.node_name
   wait_for_ssh_connection node
   write_connect_script node, args.node_name
 end
 
 desc 'Terminate named node'
-task :stop, :node_name do |t, args|
+task :stop, [:node_name] => [:check_credentials] do |t, args|
   terminate_node args.node_name
   filename = connect_script_name args.node_name
   File.delete(filename) if File.exists?(filename)
 end
 
 desc 'Terminate all running nodes'
-task :stop_all do
+task :stop_all => :check_credentials do
   terminate_all
+end
+
+task :check_credentials do
+  unless File.exists? CREDENTIALS
+    access_key_id = ask('AWS Access Key ID? ')
+    secret_access_key = ask('AWS Secret Access Key? ')
+    credentials = {:access_key_id => access_key_id.to_s, :secret_access_key => secret_access_key.to_s}
+    File.open(CREDENTIALS, 'w') { |out| YAML.dump credentials, out }
+    File.chmod(0600, CREDENTIALS)
+  end
+  unless File.exists? AWS_KEY
+    aws_key = ask('AWS SSH Key? ')
+    cp File.expand_path(aws_key), AWS_KEY
+    File.chmod(0600, AWS_KEY)
+  end
 end
 
 def wait_for_ssh_connection(node)
@@ -29,11 +46,6 @@ def wait_for_ssh_connection(node)
 end
 
 def write_connect_script(node, node_name)
-  unless File.exists? AWS_KEY
-    aws_key = ask('AWS SSH key? ')
-    cp File.expand_path(aws_key), AWS_KEY
-    File.chmod(0600, AWS_KEY)
-  end
   filename = connect_script_name node_name
   File.open(filename, 'w') do |out|
     out.puts "#!/bin/sh"
@@ -92,18 +104,6 @@ def wait_while(instance, status)
 end
 
 def connect_to_ec2
-  ec2 = AWS::EC2.new(aws_credentials)
+  ec2 = AWS::EC2.new(YAML.load_file(CREDENTIALS))
   ec2.regions['us-west-1']
-end
-
-def aws_credentials
-  if File.exists? CREDENTIALS
-    YAML.load_file CREDENTIALS
-  else
-    access_key_id = ask('AWS Access Key ID? ')
-    secret_access_key = ask('AWS Secret Access Key? ')
-    credentials = {:access_key_id => access_key_id.to_s, :secret_access_key => secret_access_key.to_s}
-    File.open(CREDENTIALS, 'w') { |out| YAML.dump credentials, out }
-    credentials
-  end
 end
