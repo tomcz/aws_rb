@@ -49,7 +49,8 @@ task :check_credentials do
 end
 
 def wait_for_ssh_connection(node)
-  sleep 5 while system("nc -z -v -w 10 #{node.public_dns_name} 22") == false
+  puts "Waiting for SSH server on #{node.public_dns_name}"
+  sleep 5 while !system("nc -z -v -w 10 #{node.public_dns_name} 22")
 end
 
 def write_connect_script(node, node_name)
