@@ -1,5 +1,6 @@
 require 'aws'
 require 'yaml'
+require 'net/ssh'
 require 'highline/import'
 
 AMI_USER = 'ec2-user'
@@ -16,9 +17,7 @@ task :default => :check_credentials
 
 desc 'Create a named node'
 task :start, [:node_name] => [:check_credentials] do |t, args|
-  node = provision_node args.node_name
-  wait_for_ssh_connection node
-  write_connect_script node, args.node_name
+  start_node args.node_name
 end
 
 desc 'Terminate named node'
@@ -46,6 +45,35 @@ task :check_credentials do
     cp File.expand_path(aws_key), AWS_SSH_KEY
     File.chmod(0600, AWS_SSH_KEY)
   end
+end
+
+desc 'Provision a named node with chef'
+task :provision, [:node_name] => [:check_credentials] do |t, args|
+  hostname = start_node args.node_name
+  Net::SSH.start(hostname, AMI_USER, :keys => [AWS_SSH_KEY], :keys_only => true, :user_known_hosts_file => ['/dev/null']) do |ssh|
+    exec_and_check(ssh, 'ruby --version')
+    unless exec_and_check(ssh, 'gem --version', false)
+      exec_and_check ssh, 'curl http://production.cf.rubygems.org/rubygems/rubygems-1.8.10.tgz -o /tmp/rubygems-1.8.10.tgz'
+      exec_and_check ssh, 'cd /tmp; tar xzf /tmp/rubygems-1.8.10.tgz'
+      exec_and_check ssh, 'cd /tmp/rubygems-1.8.10; sudo ruby setup.rb --no-format-executable'
+    end
+  end
+end
+
+def exec_and_check(ssh, command, raise_on_error = true)
+  result = ssh.exec!("#{command}; echo $?")
+  puts result
+
+  success = result.split(/\n/).last == '0'
+  raise 'FAILED!' if !success && raise_on_error
+  success
+end
+
+def start_node(node_name)
+  node = provision_node node_name
+  wait_for_ssh_connection node
+  write_connect_script node, node_name
+  node.public_dns_name
 end
 
 def wait_for_ssh_connection(node)
@@ -80,13 +108,14 @@ def provision_node(node_name)
     wait_while instance, :pending
     instance.add_tag('Name', :value => node_name)
   end
+  puts "Started #{node_name} - #{instance.id}"
   instance
 end
 
 def terminate_node(node_name)
   connect_to_ec2.instances.each do |instance|
     if running_instance? instance, node_name
-      puts "Terminating #{node_name}"
+      puts "Terminating #{node_name} - #{instance.id}"
       instance.terminate
       wait_while instance, :running
     end
