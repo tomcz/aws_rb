@@ -1,5 +1,6 @@
 require 'aws'
 require 'yaml'
+require 'ostruct'
 require 'net/ssh'
 require 'highline/import'
 
@@ -51,22 +52,48 @@ desc 'Provision a named node with chef'
 task :provision, [:node_name] => [:check_credentials] do |t, args|
   hostname = start_node args.node_name
   Net::SSH.start(hostname, AMI_USER, :keys => [AWS_SSH_KEY], :keys_only => true, :user_known_hosts_file => ['/dev/null']) do |ssh|
-    exec_and_check(ssh, 'ruby --version')
-    unless exec_and_check(ssh, 'gem --version', false)
-      exec_and_check ssh, 'curl http://production.cf.rubygems.org/rubygems/rubygems-1.8.10.tgz -o /tmp/rubygems-1.8.10.tgz'
-      exec_and_check ssh, 'cd /tmp; tar xzf /tmp/rubygems-1.8.10.tgz'
-      exec_and_check ssh, 'cd /tmp/rubygems-1.8.10; sudo ruby setup.rb --no-format-executable'
+    result = ssh_exec! ssh, 'gem --version', false
+    unless result.exit_code == 0
+      ssh_exec! ssh, 'curl http://production.cf.rubygems.org/rubygems/rubygems-1.8.10.tgz -o /tmp/rubygems-1.8.10.tgz'
+      ssh_exec! ssh, 'cd /tmp && tar xzf rubygems-1.8.10.tgz'
+      ssh_exec! ssh, 'cd /tmp/rubygems-1.8.10 && sudo ruby setup.rb --no-format-executable'
     end
   end
 end
 
-def exec_and_check(ssh, command, raise_on_error = true)
-  result = ssh.exec!("#{command}; echo $?")
-  puts result
+def ssh_exec!(ssh, command, check_exit_code = true)
+  result = OpenStruct.new(:output => '')
+  ssh.open_channel do |channel|
+    channel.request_pty do |ch,success|
+      raise 'FAILED: could not obtain pty' unless success
+    end
+    channel.exec(command) do |ch,success|
+      raise "FAILED: could not execute #{command}" unless success
 
-  success = result.split(/\n/).last == '0'
-  raise 'FAILED!' if !success && raise_on_error
-  success
+      channel.on_data do |ch,data|
+        result.output += data
+      end
+
+      channel.on_extended_data do |ch,type,data|
+        result.output += data
+      end
+
+      channel.on_request("exit-status") do |ch,data|
+        result.exit_code = data.read_long
+      end
+
+      channel.on_request("exit-signal") do |ch, data|
+        result.exit_signal = data.read_long
+      end
+    end
+  end
+  ssh.loop
+  puts "> #{command}"
+  puts result.output
+  if check_exit_code && result.exit_code != 0
+    raise "FAILED: bad exit code [#{result.exit_code}] for #{command}"
+  end
+  result
 end
 
 def start_node(node_name)
