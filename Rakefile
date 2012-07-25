@@ -48,20 +48,31 @@ task :check_credentials do
   end
 end
 
-desc 'Provision a named node with chef'
+desc 'Provision a named node with chef-solo'
 task :provision, [:node_name] => [:check_credentials] do |t, args|
   hostname = start_node args.node_name
   Net::SSH.start(hostname, AMI_USER, :keys => [AWS_SSH_KEY], :keys_only => true, :user_known_hosts_file => ['/dev/null']) do |ssh|
+    install_chef_solo ssh
+  end
+end
+
+def install_chef_solo(ssh)
+  result = ssh_exec! ssh, 'chef-solo --version', false
+  unless result.exit_code == 0
+    ssh_exec! ssh, 'sudo yum -y install ruby ruby-devel ruby-ri ruby-rdoc gcc gcc-c++ automake autoconf make curl dmidecode'
     result = ssh_exec! ssh, 'gem --version', false
     unless result.exit_code == 0
       ssh_exec! ssh, 'curl http://production.cf.rubygems.org/rubygems/rubygems-1.8.10.tgz -o /tmp/rubygems-1.8.10.tgz'
       ssh_exec! ssh, 'cd /tmp && tar xzf rubygems-1.8.10.tgz'
       ssh_exec! ssh, 'cd /tmp/rubygems-1.8.10 && sudo ruby setup.rb --no-format-executable'
+      ssh_exec! ssh, 'rm -rf /tmp/rubygems-1.8.10*'
     end
+    ssh_exec! ssh, 'sudo gem install chef --no-ri --no-rdoc'
   end
 end
 
 def ssh_exec!(ssh, command, check_exit_code = true)
+  puts ">> #{command}"
   result = OpenStruct.new(:output => '')
   ssh.open_channel do |channel|
     channel.request_pty do |ch,success|
@@ -72,10 +83,12 @@ def ssh_exec!(ssh, command, check_exit_code = true)
 
       channel.on_data do |ch,data|
         result.output += data
+        print data
       end
 
       channel.on_extended_data do |ch,type,data|
         result.output += data
+        print data
       end
 
       channel.on_request("exit-status") do |ch,data|
@@ -88,8 +101,7 @@ def ssh_exec!(ssh, command, check_exit_code = true)
     end
   end
   ssh.loop
-  puts "> #{command}"
-  puts result.output
+  puts # output may not end with a new line
   if check_exit_code && result.exit_code != 0
     raise "FAILED: bad exit code [#{result.exit_code}] for #{command}"
   end
@@ -135,14 +147,14 @@ def provision_node(node_name)
     wait_while instance, :pending
     instance.add_tag('Name', :value => node_name)
   end
-  puts "Started #{node_name} - #{instance.id}"
+  puts "Started #{node_name} instance #{instance.id}"
   instance
 end
 
 def terminate_node(node_name)
   connect_to_ec2.instances.each do |instance|
     if running_instance? instance, node_name
-      puts "Terminating #{node_name} - #{instance.id}"
+      puts "Terminating #{node_name} instance #{instance.id}"
       instance.terminate
       wait_while instance, :running
     end
