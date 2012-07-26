@@ -30,6 +30,7 @@ end
 
 desc 'Terminate all running nodes'
 task :stop_all => :check_credentials do
+  Dir['ssh_*'].each { |script| File.delete script }
   terminate_all
 end
 
@@ -59,14 +60,7 @@ end
 def install_chef_solo(ssh)
   result = ssh_exec! ssh, 'chef-solo --version', false
   unless result.exit_code == 0
-    ssh_exec! ssh, 'sudo yum -y install ruby ruby-devel ruby-ri ruby-rdoc gcc gcc-c++ automake autoconf make curl dmidecode'
-    result = ssh_exec! ssh, 'gem --version', false
-    unless result.exit_code == 0
-      ssh_exec! ssh, 'curl http://production.cf.rubygems.org/rubygems/rubygems-1.8.10.tgz -o /tmp/rubygems-1.8.10.tgz'
-      ssh_exec! ssh, 'cd /tmp && tar xzf rubygems-1.8.10.tgz'
-      ssh_exec! ssh, 'cd /tmp/rubygems-1.8.10 && sudo ruby setup.rb --no-format-executable'
-      ssh_exec! ssh, 'rm -rf /tmp/rubygems-1.8.10*'
-    end
+    ssh_exec! ssh, 'sudo yum -y install ruby ruby-devel ruby-ri ruby-rdoc gcc gcc-c++ automake autoconf make curl dmidecode rubygems'
     ssh_exec! ssh, 'sudo gem install chef --no-ri --no-rdoc'
   end
 end
@@ -116,7 +110,7 @@ def start_node(node_name)
 end
 
 def wait_for_ssh_connection(node)
-  puts "Waiting for SSH server on #{node.public_dns_name}"
+  puts "Waiting for SSH server on #{node.public_dns_name} ..."
   sleep 5 while !system("nc -z -v -w 10 #{node.public_dns_name} 22")
 end
 
@@ -138,7 +132,7 @@ def provision_node(node_name)
   conn = connect_to_ec2
   instance = conn.instances.find { |i| running_instance? i, node_name }
   unless instance
-    puts "Starting #{node_name}"
+    puts "Starting #{node_name} on EC2 ..."
     instance = conn.instances.create(
         :image_id => AMI_IMAGE,
         :key_name => EC2_KEY_NAME,
