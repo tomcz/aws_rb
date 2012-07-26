@@ -52,6 +52,7 @@ end
 desc 'Provision a named node with chef-solo'
 task :provision, [:node_name] => [:check_credentials] do |t, args|
   hostname = start_node args.node_name
+  # use /dev/null as known_hosts to keep EC2 signatures from filling up the normal known_hosts file
   Net::SSH.start(hostname, AMI_USER, :keys => [AWS_SSH_KEY], :keys_only => true, :user_known_hosts_file => ['/dev/null']) do |ssh|
     install_chef_solo ssh
   end
@@ -118,6 +119,7 @@ def write_connect_script(node, node_name)
   filename = connect_script_name node_name
   File.open(filename, 'w') do |out|
     out.puts "#!/bin/sh"
+    # use /dev/null as known_hosts to keep EC2 signatures from filling up the normal known_hosts file
     out.puts "ssh -i #{AWS_SSH_KEY} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no #{AMI_USER}@#{node.public_dns_name}"
   end
   File.chmod(0755, filename)
