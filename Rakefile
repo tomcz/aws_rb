@@ -4,12 +4,12 @@ require 'ostruct'
 require 'net/ssh'
 require 'highline/import'
 
-AMI_USER = 'ec2-user'
-AMI_IMAGE = 'ami-6b73562e'
-AMI_SIZE = 'm1.small'
-
-EC2_KEY_NAME = 'us-west'
+# http://aws.amazon.com/amazon-linux-ami/
+AMI_IMAGE = 'ami-21f9de64'
 EC2_REGION = 'us-west-1'
+EC2_KEY_NAME = 'us-west'
+AMI_USER = 'ec2-user'
+AMI_SIZE = 'm1.small'
 
 CREDENTIALS = File.expand_path(File.join(File.dirname(__FILE__), '.aws'))
 AWS_SSH_KEY = File.expand_path(File.join(File.dirname(__FILE__), '.key'))
