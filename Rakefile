@@ -50,15 +50,11 @@ task :check_credentials do
   end
 end
 
-desc 'Provision a named node with puppet'
+desc 'Provision a named node with chef-solo'
 task :provision, [:node_name] => [:check_credentials] do |t, args|
   node = start_node args.node_name
   connect_to(node) do |ssh|
-    result = ssh_exec ssh, 'puppet --version', false
-    unless result.success
-      ssh_exec ssh, 'sudo yum -y update'
-      ssh_exec ssh, 'sudo yum install -y puppet'
-    end
+    install_chef_solo ssh
   end
   write_connect_script node
 end
@@ -69,6 +65,15 @@ def connect_to(node, &block)
       :keys => [AWS_SSH_KEY], :keys_only => true,
       :user_known_hosts_file => ['/dev/null']) do |ssh|
     block.call(ssh)
+  end
+end
+
+def install_chef_solo(ssh)
+  result = ssh_exec! ssh, 'chef-solo --version', false
+  unless result.success
+    ssh_exec ssh, 'sudo yum -y update'
+    ssh_exec ssh, 'sudo yum -y install ruby ruby-devel ruby-ri ruby-rdoc gcc gcc-c++ automake autoconf make curl dmidecode rubygems'
+    ssh_exec ssh, 'sudo gem install chef --no-ri --no-rdoc'
   end
 end
 
