@@ -69,7 +69,7 @@ def connect_to(node, &block)
 end
 
 def install_chef_solo(ssh)
-  result = ssh_exec! ssh, 'chef-solo --version', false
+  result = ssh_exec ssh, 'chef-solo --version', false
   unless result.success
     ssh_exec ssh, 'sudo yum -y update'
     ssh_exec ssh, 'sudo yum -y install ruby ruby-devel ruby-ri ruby-rdoc gcc gcc-c++ automake autoconf make curl dmidecode rubygems'
