@@ -24,7 +24,7 @@ end
 
 desc 'Terminate all running nodes'
 task :stop_all => :check_credentials do
-  Dir['ssh_*'].each { |script| File.delete script }
+  Dir[connect_script_name('*')].each { |script| File.delete script }
   aws.terminate_all
 end
 
@@ -70,5 +70,5 @@ def write_connect_script(node)
 end
 
 def connect_script_name(node_name)
-  "ssh_" + node_name
+  "connect_" + node_name
 end
