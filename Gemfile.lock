@@ -6,6 +6,7 @@ GEM
       json (~> 1.4)
       nokogiri (>= 1.4.4)
       uuidtools (~> 2.1)
+    colorize (0.5.8)
     highline (1.6.13)
     httparty (0.8.3)
       multi_json (~> 1.0)
@@ -25,6 +26,7 @@ PLATFORMS
 
 DEPENDENCIES
   aws-sdk
+  colorize
   highline
   net-scp
   net-ssh
