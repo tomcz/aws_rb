@@ -50,11 +50,11 @@ task :provision, [:node_name] => [:check_credentials] do |t, args|
 end
 
 def install_chef_solo(ssh)
-  result = ssh.exec 'chef-solo --version', false
+  result = ssh.exec 'chef-solo --version'
   unless result.success
-    ssh.exec 'sudo yum -y update'
-    ssh.exec 'sudo yum -y install ruby ruby-devel ruby-ri ruby-rdoc gcc gcc-c++ automake autoconf make curl dmidecode rubygems'
-    ssh.exec 'sudo gem install chef --no-ri --no-rdoc'
+    ssh.exec! 'sudo yum -y update'
+    ssh.exec! 'sudo yum -y install ruby ruby-devel ruby-ri ruby-rdoc gcc gcc-c++ automake autoconf make curl dmidecode rubygems'
+    ssh.exec! 'sudo gem install chef --no-ri --no-rdoc'
   end
 end
 

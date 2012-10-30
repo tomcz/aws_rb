@@ -16,7 +16,11 @@ class SSHDriver
     end
   end
 
-  def exec(command, check_exit_code = true)
+  def exec!(command)
+    exec command, true
+  end
+
+  def exec(command, check_exit_code = false)
     puts ">> #{command}".green
     result = OpenStruct.new(:output => '')
     @ssh.open_channel do |channel|
