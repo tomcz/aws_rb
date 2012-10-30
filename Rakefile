@@ -2,6 +2,7 @@ require 'aws'
 require 'yaml'
 require 'ostruct'
 require 'net/ssh'
+require 'net/scp'
 require 'highline/import'
 
 # http://aws.amazon.com/amazon-linux-ami/
@@ -113,6 +114,13 @@ def ssh_exec(ssh, command, check_exit_code = true)
     raise "FAILED: bad exit code [#{result.exit_code}] for #{command}"
   end
   result
+end
+
+def scp(ssh, local_file, remote_file)
+  puts ">> scp #{local_file} #{remote_file}"
+  ssh.scp.upload!(local_file, remote_file) do |ch, name, sent, total|
+    puts "#{name}: #{sent}/#{total}"
+  end
 end
 
 def start_node(node_name)
