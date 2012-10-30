@@ -5,7 +5,7 @@ require 'fileutils'
 
 class AWSDriver
 
-  attr_reader :credentials, :aws_ssh_key
+  attr_reader :credentials, :ssh_key_file
 
   # http://aws.amazon.com/amazon-linux-ami/
   AMI_IMAGE = 'ami-21f9de64'
@@ -16,13 +16,13 @@ class AWSDriver
 
   def initialize(config_dir)
     @credentials = File.join(config_dir, '.aws')
-    @aws_ssh_key = File.join(config_dir, '.key')
+    @ssh_key_file = File.join(config_dir, '.key')
   end
 
   def start_node(node_name)
     node = provision_node node_name
     wait_for_ssh_connection node.public_dns_name
-    OpenStruct.new(:name => node_name, :hostname => node.public_dns_name, :user => AMI_USER, :keyfile => @aws_ssh_key)
+    OpenStruct.new(:name => node_name, :hostname => node.public_dns_name, :user => AMI_USER, :keyfile => @ssh_key_file)
   end
 
   def provision_node(node_name)
@@ -80,15 +80,23 @@ class AWSDriver
     ec2.regions[EC2_REGION]
   end
 
+  def credentials?
+    File.exists? @credentials
+  end
+
+  def ssh_key_file?
+    File.exists? @ssh_key_file
+  end
+
   def save_credentials(access_key_id, secret_access_key)
     credentials = {:access_key_id => access_key_id, :secret_access_key => secret_access_key}
     File.open(@credentials, 'w') { |out| YAML.dump credentials, out }
     File.chmod(0600, @credentials)
   end
 
-  def save_aws_ssh_key(aws_key_file)
-    FileUtils.cp File.expand_path(aws_key_file), @aws_ssh_key
-    File.chmod(0600, @aws_ssh_key)
+  def save_ssh_key_file(ssh_key_file)
+    FileUtils.cp File.expand_path(ssh_key_file), @ssh_key_file
+    File.chmod(0600, @ssh_key_file)
   end
 
 end

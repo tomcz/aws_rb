@@ -29,14 +29,14 @@ task :stop_all => :check_credentials do
 end
 
 task :check_credentials do
-  unless File.exists? aws.credentials
+  unless aws.credentials?
     access_key_id = ask('AWS Access Key ID? ')
     secret_access_key = ask('AWS Secret Access Key? ')
     aws.save_credentials access_key_id.to_s, secret_access_key.to_s
   end
-  unless File.exists? aws.aws_ssh_key
-    aws_key = ask('AWS SSH Key? ')
-    aws.save_aws_ssh_key aws_key.to_s
+  unless aws.ssh_key_file?
+    aws_key = ask('AWS SSH Key File? ')
+    aws.save_ssh_key_file aws_key.to_s
   end
 end
 
@@ -66,7 +66,7 @@ def write_connect_script(node)
     out.puts "ssh -i #{node.keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no #{node.user}@#{node.hostname}"
   end
   File.chmod(0755, filename)
-  puts "Connect to #{node.name} using ./#{filename}".yellow
+  puts "Connect to #{node.name} using ./#{filename}".green
 end
 
 def connect_script_name(node_name)
