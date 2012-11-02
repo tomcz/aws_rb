@@ -1,11 +1,19 @@
-$LOAD_PATH.unshift File.expand_path(File.join(File.dirname(__FILE__), 'lib'))
+ROOT = File.expand_path(File.dirname(__FILE__))
+$LOAD_PATH.unshift File.join(ROOT, 'lib')
 
 require 'colorize'
 require 'ssh_driver'
 require 'aws_driver'
 require 'highline/import'
+require 'rake/clean'
 
-aws = AWSDriver.new(File.expand_path(File.dirname(__FILE__)))
+OUTPUT = 'build'
+CLEAN << OUTPUT
+directory OUTPUT
+
+TARBALL_NAME = 'chef-solo.tgz'
+
+aws = AWSDriver.new(ROOT)
 
 task :default => :check_credentials
 
@@ -41,10 +49,11 @@ task :check_credentials do
 end
 
 desc 'Provision a named node with chef-solo'
-task :provision, [:node_name] => [:check_credentials] do |t, args|
+task :provision, [:node_name] => [:check_credentials, OUTPUT] do |t, args|
   node = aws.start_node args.node_name
   SSHDriver.start(node.hostname, node.user, node.keyfile) do |ssh|
     install_chef_solo ssh
+    ssh.exec! 'sudo chef-solo -c ~/chef/solo.rb -j ~/chef/solo.json'
   end
   write_connect_script node
 end
@@ -56,6 +65,11 @@ def install_chef_solo(ssh)
     ssh.exec! 'sudo yum -y install ruby ruby-devel ruby-ri ruby-rdoc gcc gcc-c++ automake autoconf make curl dmidecode rubygems'
     ssh.exec! 'sudo gem install chef --no-ri --no-rdoc'
   end
+  sh "tar cvzf #{OUTPUT}/#{TARBALL_NAME} chef"
+  ssh.exec 'rm -rf chef*'
+  ssh.exec "mkdir /tmp/chef-solo"
+  ssh.upload "#{OUTPUT}/#{TARBALL_NAME}", '.'
+  ssh.exec! "tar xvzf #{TARBALL_NAME}"
 end
 
 def write_connect_script(node)

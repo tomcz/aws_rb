@@ -1,0 +1,1 @@
+default[:activemq][:user] = "activemq"
