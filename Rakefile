@@ -63,9 +63,10 @@ task :provision, [:node_name] => [:check_credentials, OUTPUT] do |t, args|
   config['mcollective'] = Hash.new
   config['mcollective']['stomp_host'] = broker.hostname
 
-  open("#{OUTPUT}/node.json", 'w') { |fp| fp.puts JSON.pretty_generate(config) }
+  config_file = File.join(OUTPUT, 'node.json')
+  open(config_file, 'w') { |fp| fp.puts JSON.pretty_generate(config) }
 
-  provision args.node_name, "#{OUTPUT}/node.json"
+  provision args.node_name, config_file
 end
 
 desc 'Run mcollective ping on the broker'
@@ -80,8 +81,9 @@ def provision(node_name, config_file)
   node = EC2.start_node node_name
   SSHDriver.start(node.hostname, node.user, node.keyfile) do |ssh|
     install_chef_solo ssh
-    ssh.upload config_file, "chef/#{File.basename(config_file)}"
-    ssh.exec! "sudo chef-solo -c ~/chef/solo.rb -j ~/chef/#{File.basename(config_file)}"
+    config_file_name = File.basename(config_file)
+    ssh.upload config_file, "chef/#{config_file_name}"
+    ssh.exec! "sudo chef-solo -c ~/chef/solo.rb -j ~/chef/#{config_file_name}"
   end
   write_connect_script node
 end
@@ -93,10 +95,11 @@ def install_chef_solo(ssh)
     ssh.exec! 'sudo yum -y install ruby ruby-devel ruby-ri ruby-rdoc gcc gcc-c++ automake autoconf make curl dmidecode rubygems'
     ssh.exec! 'sudo gem install chef --no-ri --no-rdoc'
   end
-  sh "tar cvzf #{OUTPUT}/#{TARBALL_NAME} chef"
+  tarball_file = File.join(OUTPUT, TARBALL_NAME)
+  sh "tar cvzf #{tarball_file} chef"
   ssh.exec 'rm -rf chef*'
   ssh.exec "mkdir /tmp/chef-solo"
-  ssh.upload "#{OUTPUT}/#{TARBALL_NAME}", '.'
+  ssh.upload tarball_file, '.'
   ssh.exec! "tar xvzf #{TARBALL_NAME}"
 end
 
