@@ -1,7 +1,7 @@
 Examples of ruby integration with AWS
 =====================================
 
-This project provides a pure ruby/chef implementation of the fabric/boto/puppet setup https://github.com/tomcz/aws_py
+This project provides a pure ruby/chef implementation of the fabric/boto/puppet setup from https://github.com/tomcz/aws_py
 in order to showcase similarites and differences between puppet and chef.
 
 Usage
