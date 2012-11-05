@@ -1,0 +1,6 @@
+{
+    "run_list": [
+      "recipe[mcollective]",
+      "recipe[mcollective::server]"
+    ]
+}

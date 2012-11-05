@@ -1,0 +1,8 @@
+{
+    "run_list": [
+      "recipe[activemq]",
+      "recipe[mcollective]",
+      "recipe[mcollective::server]",
+      "recipe[mcollective::client]"
+    ]
+}

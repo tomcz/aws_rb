@@ -6,6 +6,7 @@ require 'ssh_driver'
 require 'aws_driver'
 require 'highline/import'
 require 'rake/clean'
+require 'json'
 
 OUTPUT = 'build'
 CLEAN << OUTPUT
@@ -13,13 +14,13 @@ directory OUTPUT
 
 TARBALL_NAME = 'chef-solo.tgz'
 
-aws = AWSDriver.new(ROOT)
+EC2 = AWSDriver.new(ROOT)
 
 task :default => :check_credentials
 
 desc 'Create a named node'
 task :start, [:node_name] => [:check_credentials] do |t, args|
-  node = aws.start_node args.node_name
+  node = EC2.start_node args.node_name
   write_connect_script node
 end
 
@@ -27,33 +28,60 @@ desc 'Terminate named node'
 task :stop, [:node_name] => [:check_credentials] do |t, args|
   filename = connect_script_name args.node_name
   File.delete(filename) if File.exists?(filename)
-  aws.terminate_node args.node_name
+  EC2.terminate_node args.node_name
 end
 
 desc 'Terminate all running nodes'
 task :stop_all => :check_credentials do
   Dir[connect_script_name('*')].each { |script| File.delete script }
-  aws.terminate_all
+  EC2.terminate_all
 end
 
 task :check_credentials do
-  unless aws.credentials?
-    access_key_id = ask('AWS Access Key ID? ')
-    secret_access_key = ask('AWS Secret Access Key? ')
-    aws.save_credentials access_key_id.to_s, secret_access_key.to_s
+  unless EC2.credentials?
+    access_key_id = ask('EC2 Access Key ID? ')
+    secret_access_key = ask('EC2 Secret Access Key? ')
+    EC2.save_credentials access_key_id.to_s, secret_access_key.to_s
   end
-  unless aws.ssh_key_file?
-    aws_key = ask('AWS SSH Key File? ')
-    aws.save_ssh_key_file aws_key.to_s
+  unless EC2.ssh_key_file?
+    aws_key = ask('EC2 SSH Key File? ')
+    EC2.save_ssh_key_file aws_key.to_s
   end
+end
+
+desc 'Provision a broker node with chef-solo'
+task :provision_broker => [:check_credentials, OUTPUT] do |t, args|
+  provision 'broker', 'config/broker.json'
 end
 
 desc 'Provision a named node with chef-solo'
 task :provision, [:node_name] => [:check_credentials, OUTPUT] do |t, args|
-  node = aws.start_node args.node_name
+  broker = EC2.start_node 'broker'
+
+  config = open('config/node.json') { |fp| JSON.parse fp.read }
+
+  config['mcollective'] = Hash.new
+  config['mcollective']['stomp_host'] = broker.hostname
+
+  open("#{OUTPUT}/node.json", 'w') { |fp| fp.puts JSON.pretty_generate(config) }
+
+  provision args.node_name, "#{OUTPUT}/node.json"
+end
+
+desc 'Run mcollective ping on the broker'
+task :mco_ping => :check_credentials do
+  node = EC2.start_node 'broker'
+  SSHDriver.start(node.hostname, node.user, node.keyfile) do |ssh|
+    ssh.exec! 'mco ping'
+  end
+end
+
+def provision(node_name, config_file)
+  node = EC2.start_node node_name
   SSHDriver.start(node.hostname, node.user, node.keyfile) do |ssh|
     install_chef_solo ssh
-    ssh.exec! 'sudo chef-solo -c ~/chef/solo.rb -j ~/chef/solo.json'
+    ssh.upload config_file, "chef/#{File.basename(config_file)}"
+    ssh.exec! "sudo chef-solo -c ~/chef/solo.rb -j ~/chef/#{File.basename(config_file)}"
   end
   write_connect_script node
 end

@@ -28,6 +28,7 @@ DEPENDENCIES
   aws-sdk
   colorize
   highline
+  json
   net-scp
   net-ssh
   rake
