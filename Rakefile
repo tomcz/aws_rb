@@ -89,11 +89,9 @@ def provision(node_name, config_file)
 end
 
 def install_chef_solo(ssh)
-  result = ssh.exec 'chef-solo --version'
-  unless result.success
+  unless ssh.exec('chef-solo --version').success
     ssh.exec! 'sudo yum -y update'
-    ssh.exec! 'sudo yum -y install ruby ruby-devel ruby-ri ruby-rdoc gcc gcc-c++ automake autoconf make curl dmidecode rubygems'
-    ssh.exec! 'sudo gem install chef --no-ri --no-rdoc'
+    ssh.exec! 'curl -L http://www.opscode.com/chef/install.sh | sudo bash'
   end
   tarball_file = File.join(OUTPUT, TARBALL_NAME)
   sh "tar cvzf #{tarball_file} chef"
