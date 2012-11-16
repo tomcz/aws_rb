@@ -8,14 +8,14 @@ class AWSDriver
   attr_reader :credentials, :ssh_key_file
 
   # http://aws.amazon.com/amazon-linux-ami/
-  AMI_IMAGE = 'ami-21f9de64'
-  EC2_REGION = 'us-west-1'
+  AMI_IMAGE    = 'ami-21f9de64'
+  EC2_REGION   = 'us-west-1'
   EC2_KEY_NAME = 'us-west'
-  AMI_USER = 'ec2-user'
-  AMI_SIZE = 'm1.small'
+  AMI_USER     = 'ec2-user'
+  AMI_SIZE     = 'm1.small'
 
   def initialize(config_dir)
-    @credentials = File.join(config_dir, '.aws')
+    @credentials  = File.join(config_dir, '.aws')
     @ssh_key_file = File.join(config_dir, '.key')
   end
 
@@ -27,7 +27,7 @@ class AWSDriver
 
   def provision_node(node_name)
     conn = connect_to_ec2
-    instance = conn.instances.find { |i| running_instance? i, node_name }
+    instance = running_instances_with_name(conn, node_name).first
     unless instance
       puts "Starting #{node_name} on EC2 ..."
       instance = conn.instances.create(
@@ -35,39 +35,43 @@ class AWSDriver
           :key_name => EC2_KEY_NAME,
           :instance_type => AMI_SIZE
       )
-      wait_while instance, :pending
+      wait_until instance, :running
       instance.add_tag('Name', :value => node_name)
     end
     puts "Started '#{node_name}' instance #{instance.id}"
     instance
   end
 
+  def running_instances_with_name(conn, node_name)
+    running_instances(conn).filter('tag:Name', node_name)
+  end
+
+  def running_instances(conn)
+    conn.instances.filter('instance-state-name', 'running')
+  end
+
   def terminate_node(node_name)
-    connect_to_ec2.instances.each do |instance|
-      if running_instance? instance, node_name
-        puts "Terminating #{node_name} instance #{instance.id}"
-        instance.terminate
-        wait_while instance, :running
-      end
+    running_instances_with_name(connect_to_ec2, node_name).each { |instance| terminate instance }
+  end
+
+  def terminate_unnamed
+    running_instances(connect_to_ec2).each do |instance|
+      terminate(instance) if instance.tags['Name'].nil?
     end
   end
 
   def terminate_all
-    connect_to_ec2.instances.each do |instance|
-      if instance.status == :running
-        puts "Terminating #{instance.id}"
-        instance.terminate
-        wait_while instance, :running
-      end
-    end
+    running_instances(connect_to_ec2).each { |instance| terminate instance }
   end
 
-  def running_instance?(instance, node_name)
-    instance.status == :running && instance.tags['Name'] == node_name
+  def terminate(instance)
+    puts "Terminating #{instance.id}"
+    instance.terminate
+    wait_until instance, :terminated
   end
 
-  def wait_while(instance, status)
-    sleep 5 while instance.status == status
+  def wait_until(instance, status)
+    sleep 5 while instance.status != status
   end
 
   def wait_for_ssh_connection(hostname)

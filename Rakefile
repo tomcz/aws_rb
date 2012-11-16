@@ -31,8 +31,13 @@ task :stop, [:node_name] => [:check_credentials] do |t, args|
   EC2.terminate_node args.node_name
 end
 
+desc 'Terminate all running nodes without a name'
+task :reaper => :check_credentials do
+  EC2.terminate_unnamed
+end
+
 desc 'Terminate all running nodes'
-task :stop_all => :check_credentials do
+task :destroy => :check_credentials do
   Dir[connect_script_name('*')].each { |script| File.delete script }
   EC2.terminate_all
 end
