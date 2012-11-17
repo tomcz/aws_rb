@@ -38,7 +38,7 @@ class AWSDriver
       wait_until instance, :running
       instance.add_tag('Name', :value => node_name)
     end
-    puts "Started '#{node_name}' instance #{instance.id}"
+    puts "Started [#{node_name}] instance #{instance.id}"
     instance
   end
 
@@ -65,8 +65,9 @@ class AWSDriver
   end
 
   def terminate(instance)
-    puts "Terminating #{instance.id}"
-    instance.terminate
+    instance_name = instance.tags['Name'] || 'Unnamed'
+    puts "Terminating [#{instance_name}] instance #{instance.id}"
+    instance.terminate # this make take some time
     wait_until instance, :terminated
   end
 
