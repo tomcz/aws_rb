@@ -29,12 +29,13 @@ class AWSDriver
     conn = connect_to_ec2
     instance = running_instances_with_name(conn, node_name).first
     unless instance
-      puts "Starting #{node_name} on EC2 ..."
+      puts "Starting [#{node_name}] on EC2 ..."
       instance = conn.instances.create(
           :image_id => AMI_IMAGE,
           :key_name => EC2_KEY_NAME,
           :instance_type => AMI_SIZE
       )
+      wait_for_aws # too quick!
       wait_until instance, :running
       instance.add_tag('Name', :value => node_name)
     end

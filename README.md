@@ -9,12 +9,13 @@ Usage
 
     ./go clean                 # Remove any temporary products.
     ./go clobber               # Remove any generated file.
+    ./go destroy               # Terminate all running nodes
     ./go mco_ping              # Run mcollective ping on the broker
     ./go provision[node_name]  # Provision a named node with chef-solo
     ./go provision_broker      # Provision a broker node with chef-solo
+    ./go reaper                # Terminate all running nodes without a name
     ./go start[node_name]      # Create a named node
     ./go stop[node_name]       # Terminate named node
-    ./go stop_all              # Terminate all running nodes
 
 Requirements
 ------------
