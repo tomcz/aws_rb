@@ -72,12 +72,16 @@ class AWSDriver
   end
 
   def wait_until(instance, status)
-    sleep 5 while instance.status != status
+    wait_for_aws while instance.status != status
   end
 
   def wait_for_ssh_connection(hostname)
     puts "Waiting for SSH server on #{hostname} ..."
-    sleep 5 while !system("nc -z -v -w 10 #{hostname} 22")
+    wait_for_aws while !system("nc -z -v -w 10 #{hostname} 22")
+  end
+
+  def wait_for_aws
+    sleep 5
   end
 
   def connect_to_ec2

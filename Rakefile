@@ -110,7 +110,7 @@ def write_connect_script(node)
   filename = connect_script_name node.name
   File.open(filename, 'w') do |out|
     out.puts "#!/bin/sh"
-    # use /dev/null as known_hosts to keep EC2 signatures from filling up the normal known_hosts file
+    # use /dev/null as known_hosts to stop ephemeral EC2 signatures from filling up the normal known_hosts file
     out.puts "ssh -i #{node.keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no #{node.user}@#{node.hostname}"
   end
   File.chmod(0755, filename)

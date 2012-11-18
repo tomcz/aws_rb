@@ -10,7 +10,7 @@ class SSHDriver
   end
 
   def self.start(hostname, user, keyfile, &block)
-    # use /dev/null as known_hosts to keep EC2 signatures from filling up the normal known_hosts file
+    # use /dev/null as known_hosts to stop ephemeral EC2 signatures from filling up the normal known_hosts file
     Net::SSH.start(hostname, user, :keys => [keyfile], :keys_only => true, :user_known_hosts_file => ['/dev/null']) do |ssh|
       block.call(SSHDriver.new(ssh))
     end
