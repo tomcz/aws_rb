@@ -12,7 +12,7 @@ OUTPUT = 'build'
 CLEAN << OUTPUT
 directory OUTPUT
 
-TARBALL_NAME = 'chef-solo.tgz'
+TARBALL_NAME = 'chef-solo.tar.gz'
 
 EC2 = AWSDriver.new(ROOT)
 
@@ -56,17 +56,15 @@ end
 
 desc 'Provision a broker node with chef-solo'
 task :provision_broker => [:check_credentials, OUTPUT] do |t, args|
-  provision 'broker', 'config/broker.json'
+  provision 'broker', 'chef/nodes/broker.json'
 end
 
 desc 'Provision a named node with chef-solo'
 task :provision, [:node_name] => [:check_credentials, OUTPUT] do |t, args|
   broker = EC2.start_node 'broker'
 
-  config = open('config/node.json') { |fp| JSON.parse fp.read }
-
-  config['mcollective'] = Hash.new
-  config['mcollective']['stomp_host'] = broker.hostname
+  config = open('chef/nodes/node.json') { |fp| JSON.parse fp.read }
+  config[:mcollective] = {:stomp_host => broker.hostname}
 
   config_file = File.join(OUTPUT, 'node.json')
   open(config_file, 'w') { |fp| fp.puts JSON.pretty_generate(config) }
@@ -102,21 +100,19 @@ def install_chef_solo(ssh)
   sh "tar cvzf #{tarball_file} chef"
   ssh.exec 'rm -rf chef*'
   ssh.exec "mkdir /tmp/chef-solo"
-  ssh.upload tarball_file, '.'
+  ssh.upload tarball_file, TARBALL_NAME
   ssh.exec! "tar xvzf #{TARBALL_NAME}"
 end
 
 def write_connect_script(node)
   filename = connect_script_name node.name
-  File.open(filename, 'w') do |out|
-    out.puts "#!/bin/sh"
-    # use /dev/null as known_hosts to stop ephemeral EC2 signatures from filling up the normal known_hosts file
-    out.puts "ssh -i #{node.keyfile} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no #{node.user}@#{node.hostname}"
-  end
+  namespace = OpenStruct.new(:keyfile => node.keyfile, :user => node.user, :host => node.hostname)
+  results = ERB.new(File.read('lib/connect.sh.erb')).result(namespace.send(:binding))
+  File.open(filename, 'w') { |f| f.write(results) }
   File.chmod(0755, filename)
   puts "Connect to #{node.name} using ./#{filename}".green
 end
 
 def connect_script_name(node_name)
-  "connect_" + node_name
+  "connect_#{node_name}"
 end
