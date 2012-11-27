@@ -14,8 +14,7 @@ package mcollective_client_package do
   provider Chef::Provider::Package::Rpm
 end
 
-template "client.cfg" do
-  path   "/etc/mcollective/client.cfg"
+template "/etc/mcollective/client.cfg" do
   source "client.cfg.erb"
   owner  "root"
   group  "root"

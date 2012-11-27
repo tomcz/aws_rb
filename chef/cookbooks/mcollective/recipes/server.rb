@@ -14,8 +14,7 @@ package mcollective_server_package do
   provider Chef::Provider::Package::Rpm
 end
 
-template "server.cfg" do
-  path   "/etc/mcollective/server.cfg"
+template "/etc/mcollective/server.cfg" do
   source "server.cfg.erb"
   owner  "root"
   group  "root"
@@ -25,5 +24,5 @@ end
 service "mcollective" do
   action     [:enable, :start]
   supports   :status => true, :restart => true
-  subscribes :restart, resources(:template => "server.cfg")
+  subscribes :restart, resources(:template => "/etc/mcollective/server.cfg")
 end

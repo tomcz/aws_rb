@@ -9,9 +9,9 @@ package "java-1.6.0-openjdk" do
 end
 
 [
-  ['tanukiwrapper-3.5.9-1.el6.i686',     'tanukiwrapper-3.5.9-1.el6.i686.rpm'],
-  ['activemq-5.5.0-1.el6',               'activemq-5.5.0-1.el6.noarch.rpm'],
-  ['activemq-info-provider-5.5.0-1.el6', 'activemq-info-provider-5.5.0-1.el6.noarch.rpm'],
+  %w(tanukiwrapper-3.5.9-1.el6.i686 tanukiwrapper-3.5.9-1.el6.i686.rpm),
+  %w(activemq-5.5.0-1.el6 activemq-5.5.0-1.el6.noarch.rpm),
+  %w(activemq-info-provider-5.5.0-1.el6 activemq-info-provider-5.5.0-1.el6.noarch.rpm),
 ].each do |rpm|
   remote_file "#{Chef::Config[:file_cache_path]}/#{rpm[1]}" do
     source "#{node[:activemq][:package_host]}/#{rpm[1]}"

@@ -8,14 +8,14 @@ class AWSDriver
   attr_reader :credentials, :ssh_key_file
 
   # http://aws.amazon.com/amazon-linux-ami/
-  AMI_IMAGE    = 'ami-21f9de64'
-  EC2_REGION   = 'us-west-1'
+  AMI_IMAGE = 'ami-21f9de64'
+  EC2_REGION = 'us-west-1'
   EC2_KEY_NAME = 'us-west'
-  AMI_USER     = 'ec2-user'
-  AMI_SIZE     = 'm1.small'
+  AMI_USER = 'ec2-user'
+  AMI_SIZE = 'm1.small'
 
   def initialize(config_dir)
-    @credentials  = File.join(config_dir, '.aws')
+    @credentials = File.join(config_dir, '.aws')
     @ssh_key_file = File.join(config_dir, '.key')
   end
 
@@ -30,14 +30,10 @@ class AWSDriver
     instance = running_instances_with_name(conn, node_name).first
     unless instance
       puts "Starting [#{node_name}] on EC2 ..."
-      instance = conn.instances.create(
-          :image_id => AMI_IMAGE,
-          :key_name => EC2_KEY_NAME,
-          :instance_type => AMI_SIZE
-      )
-      wait_for_aws # too quick!
-      wait_until instance, :running
+      instance = conn.instances.create :image_id => AMI_IMAGE, :key_name => EC2_KEY_NAME, :instance_type => AMI_SIZE
+      wait_until_exists instance # call to create can sometimes return faster than actual instance creation on EC2
       instance.add_tag('Name', :value => node_name)
+      wait_until instance, :running
     end
     puts "Started [#{node_name}] instance #{instance.id}"
     instance
@@ -74,6 +70,10 @@ class AWSDriver
 
   def wait_until(instance, status)
     wait_for_aws while instance.status != status
+  end
+
+  def wait_until_exists(instance)
+    wait 1 until instance.exists?
   end
 
   def wait_for_ssh_connection(hostname)
