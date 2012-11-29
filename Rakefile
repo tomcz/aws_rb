@@ -54,7 +54,7 @@ task :destroy => :check_credentials do
 end
 
 desc 'Provision a broker node with chef-solo'
-task :provision_broker => [:check_credentials, OUTPUT] do |t, args|
+task :provision_broker => [:check_credentials, OUTPUT] do
   provision 'broker', 'chef/nodes/broker.json'
 end
 
