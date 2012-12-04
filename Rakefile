@@ -105,8 +105,8 @@ end
 
 def write_connect_script(node)
   filename = connect_script_name node.name
-  namespace = OpenStruct.new(:keyfile => node.keyfile, :user => node.user, :host => node.hostname)
-  results = ERB.new(File.read('lib/connect.sh.erb')).result(namespace.send(:binding))
+  namespace = OpenStruct.new(keyfile: node.keyfile, user: node.user, host: node.hostname)
+  results = ERB.new(File.read('lib/connect.sh.erb')).result(namespace.instance_eval { binding })
   File.open(filename, 'w') { |f| f.write(results) }
   File.chmod(0755, filename)
   puts "Connect to #{node.name} using ./#{filename}".green

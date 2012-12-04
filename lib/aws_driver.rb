@@ -22,7 +22,7 @@ class AWSDriver
   def start_node(node_name)
     node = provision_node node_name
     wait_for_ssh_connection node.public_dns_name
-    OpenStruct.new(:name => node_name, :hostname => node.public_dns_name, :user => AMI_USER, :keyfile => @ssh_key_file)
+    OpenStruct.new(name: node_name, hostname: node.public_dns_name, user: AMI_USER, keyfile: @ssh_key_file)
   end
 
   def provision_node(node_name)
@@ -30,9 +30,9 @@ class AWSDriver
     instance = running_instances_with_name(conn, node_name).first
     unless instance
       puts "Starting [#{node_name}] on EC2 ..."
-      instance = conn.instances.create :image_id => AMI_IMAGE, :key_name => EC2_KEY_NAME, :instance_type => AMI_SIZE
-      wait_until_exists instance # call to create can sometimes return faster than actual instance creation on EC2
-      instance.add_tag('Name', :value => node_name)
+      instance = conn.instances.create image_id: AMI_IMAGE, key_name: EC2_KEY_NAME, instance_type: AMI_SIZE
+      wait_until_exists instance # call to create can sometimes return faster than actual instance creation
+      instance.add_tag 'Name', value: node_name
       wait_until instance, :running
     end
     puts "Started [#{node_name}] instance #{instance.id}"
@@ -99,7 +99,7 @@ class AWSDriver
   end
 
   def save_credentials(access_key_id, secret_access_key)
-    credentials = {:access_key_id => access_key_id, :secret_access_key => secret_access_key}
+    credentials = {access_key_id: access_key_id, secret_access_key: secret_access_key}
     File.open(@credentials, 'w') { |out| YAML.dump credentials, out }
     File.chmod(0600, @credentials)
   end
