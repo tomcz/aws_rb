@@ -1,6 +1,6 @@
 execute 'install-stomp-rubygem' do
-  command 'yum install rubygem-stomp-1.1.8 --enablerepo=epel -y'
-  creates '/usr/lib/ruby/gems/1.8/gems/stomp-1.1.8'
+  command 'yum -y install rubygem-stomp-1.2.2 --enablerepo=epel'
+  creates '/usr/lib/ruby/gems/1.8/gems/stomp-1.2.2'
 end
 
 mcollective_common_package = 'mcollective-common-1.3.1-2.el6'
