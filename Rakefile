@@ -19,12 +19,12 @@ task :default => :check_credentials
 task :check_credentials do
   @aws = AWSDriver.new(ROOT)
   unless @aws.credentials?
-    access_key_id = ask('@aws Access Key ID? ')
-    secret_access_key = ask('@aws Secret Access Key? ')
+    access_key_id = ask('Access Key ID? ')
+    secret_access_key = ask('Secret Access Key? ')
     @aws.save_credentials access_key_id.to_s, secret_access_key.to_s
   end
   unless @aws.ssh_key_file?
-    aws_key = ask('@aws SSH Key File? ')
+    aws_key = ask('SSH Key File? ')
     @aws.save_ssh_key_file aws_key.to_s
   end
 end
