@@ -73,7 +73,7 @@ class AWSDriver
   end
 
   def wait_until_exists(instance)
-    wait 1 until instance.exists?
+    sleep 1 until instance.exists?
   end
 
   def wait_for_ssh_connection(hostname)
